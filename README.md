@@ -1,70 +1,151 @@
 # FITRIS: Fitness Meets Tetris
 
-**FITRIS** is an innovative exercise game that combines fitness routines with the classic game of Tetris. The game uses AI-powered exercise detection to make working out engaging and fun. With **OpenCV** detecting exercise movements and a responsive game design, FITRIS transforms your workout into game controls, making fitness more interactive.
-
-## Features
-
-- **AI-Powered Exercise Detection**: Uses **OpenCV** to recognize different fitness movements like squats, push-ups, jumping jacks, and more.
-- **Interactive Gameplay**: Fitness routines control the Tetris blocks, providing a fun, real-time workout challenge.
-- **ReactJS Frontend**: A dynamic and user-friendly interface built with **ReactJS**.
-- **Flask Backend**: Secure and efficient backend logic developed with **Flask**.
-- **Motivational Game Design**: Challenges and rewards keep you motivated throughout your workout.
-- **Customizable Exercises**: Users can select different exercises to match their fitness level.
+**FITRIS** turns your workout into a game of Tetris. A webcam watches your body, an
+AI pose model recognizes exercises (squats, jumping jacks, flexes, side sways), and
+each exercise is mapped to a Tetris control. Do a squat to hard-drop a piece, a
+jumping jack to rotate, sway left/right to move — and try to clear lines without
+topping out.
 
 ## Tech Stack
 
-- **Frontend**: ReactJS
-- **Backend**: Flask
-- **AI/Exercise Detection**: OpenCV
-- **UI/UX Design**: Adobe XD / Figma
+- **Frontend**: ReactJS (Create React App)
+- **Backend**: Flask (Python)
+- **Pose / Exercise Detection**: OpenCV + MediaPipe Pose
 
 ## How It Works
 
-1. **Setup Your Webcam**: FITRIS requires access to your webcam to detect your movements.
-2. **Play Tetris**: Your movements control the Tetris blocks. For example, squats may rotate a block.
-4. **Stay Fit**: The game tracks your performance, offering a fun and interactive way to stay active.
+FITRIS is three small programs connected by HTTP — the detector pushes events to
+the backend, and the backend streams them to the browser:
+
+```
+ ┌──────────────────────┐  POST /exercise  ┌────────────┐  SSE /events   ┌─────────────┐
+ │ exercise_detection.py │ ───────────────▶ │  server.py │ ─────────────▶ │  React app  │
+ │ (webcam + MediaPipe)  │   {exercise}     │  (Flask,   │   {exercise,   │  (Tetris)   │
+ └──────────────────────┘                  │ in-memory) │     seq}        └─────────────┘
+                                            └────────────┘
+```
+
+1. **`exercise_detection.py`** captures your webcam with OpenCV and runs MediaPipe
+   Pose to get body landmarks. It computes joint angles each frame and uses simple
+   rules (e.g. knee angle for squats, arm/leg angles for jumping jacks) to detect a
+   completed rep. When it detects one, it **POSTs** the exercise name to
+   `http://localhost:5000/exercise` (e.g. `{"exercise": "Squat"}`). Press **`q`** in
+   the webcam window to quit.
+
+2. **`server.py`** is a Flask server holding the latest exercise in memory with an
+   incrementing `seq`. `POST /exercise` records a detection; `GET /events` is a
+   **Server-Sent Events** stream that pushes each detection to subscribers as
+   `{ "exercise": "Squat", "seq": 7 }`. It runs on `http://localhost:5000`.
+
+3. **The React app** (`src/`) subscribes to `/events` with `EventSource` (the dev
+   server proxies `/events` to Flask via the `"proxy"` field in `package.json`).
+   Every event — identified by its unique `seq` — triggers the matching action, so
+   repeating the same exercise registers every time.
+
+### Exercise → control mapping
+
+| Exercise      | Tetris action      | Keyboard equivalent |
+| ------------- | ------------------ | ------------------- |
+| Sway Left     | Move piece left    | ← Left arrow        |
+| Sway Right    | Move piece right   | → Right arrow       |
+| Jumping Jack  | Rotate piece       | ↑ Up arrow          |
+| Squat         | Hard drop          | Spacebar            |
+| Flex          | Hold piece         | `C`                 |
+| —             | Soft drop          | ↓ Down arrow        |
+
+Keyboard controls are always available, so you can play (and test) the game without
+a webcam.
+
+## Project Structure
+
+```
+backend/
+  exercise_detection.py # webcam pose detection -> POST /exercise
+  server.py             # Flask API: POST /exercise, SSE GET /events
+  requirements.txt      # Python dependencies
+frontend/
+  package.json          # React app + dev-server proxy to Flask
+  public/
+  src/                  # React Tetris game
+    App.js              # subscribes to /events and feeds the game
+    components/
+      Tetris.js         # game state, controls, scoring
+      GameGrid.js       # renders the grid + active piece
+      helpers.js        # grid + tetromino + collision helpers
+```
 
 ## Installation
 
-1. Clone this repository:
+Requirements: **Node.js** and **Python 3.10–3.12** (MediaPipe wheels may not yet be
+available on the very newest Python releases).
 
-    ```bash
-    git clone https://github.com/yourusername/fitris.git
-    cd fitris
-    ```
+1. Clone and enter the repo:
 
-2. Install the dependencies for the backend:
+   ```bash
+   git clone https://github.com/yuvibirdi/fitris.git
+   cd fitris
+   ```
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+2. Install the Python dependencies (a virtualenv is recommended):
+
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate      # Windows: .venv\Scripts\activate
+   pip install -r backend/requirements.txt
+   ```
 
 3. Install the frontend dependencies:
 
-    ```bash
-    cd frontend
-    npm install
-    ```
+   ```bash
+   cd frontend
+   npm install
+   cd ..
+   ```
 
-4. Start the Flask backend:
+## Running the App
 
-    ```bash
-    cd ..
-    python app.py
-    ```
+Open **three** terminals from the project root.
 
-5. Start the React frontend:
+1. **Start the Flask backend** (serves `/exercise` on port 5000):
 
-    ```bash
-    cd frontend
-    npm start
-    ```
+   ```bash
+   source .venv/bin/activate      # if not already active
+   python backend/server.py
+   ```
 
-6. Open your browser and go to `http://localhost:3000`.
+2. **Start the React frontend** (opens on port 3000, proxies to Flask):
+
+   ```bash
+   cd frontend
+   npm start
+   ```
+
+   Then open `http://localhost:3000`.
+
+3. **Start exercise detection** (opens a webcam window):
+
+   ```bash
+   source .venv/bin/activate      # if not already active
+   python backend/exercise_detection.py
+   ```
+
+   Stand back far enough that your whole body is visible. Press **`q`** in the
+   webcam window to stop detection.
 
 ## Usage
 
-- Ensure your webcam is connected and allowed in the browser.
-- Select the exercises you want to perform.
-- Play the game while performing the chosen exercises. Each movement controls a different part of the Tetris gameplay.
+- Make sure your webcam is connected and not in use by another app.
+- Stand so your full body is in frame for the pose model to track you.
+- Perform exercises to control the falling pieces (see the mapping table above).
+- Prefer to test without a camera? Just skip step 3 and use the keyboard.
+- Clear lines for points; the high score is saved in your browser's local storage.
 
+## Notes & Limitations
+
+- Detections flow detector → backend (`POST`) → browser (SSE). The backend keeps the
+  latest exercise in memory only — restart it and that state is gone (the game just
+  waits for the next detection), which is fine for a single local session.
+- The detector reads `FITRIS_SERVER` (default `http://localhost:5000`) if you need to
+  point it at a backend on another host/port.
+- High knees and a couple of other moves are present in the detection code but
+  currently commented out.
