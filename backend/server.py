@@ -1,13 +1,16 @@
 import json
 import threading
+from collections import deque
 from flask import Flask, jsonify, request, Response # type: ignore
 
 app = Flask(__name__)
 
-# In-memory state shared between the detector (writer) and the SSE stream
-# (readers). `seq` increments on every detection so that two identical
-# exercises in a row are still delivered as two distinct events.
-_state = {"name": None, "seq": 0}
+# In-memory state shared between the detector (writer) and the SSE streams
+# (readers). Every detection gets the next `seq` and is kept in a short log, so
+# each connected client is sent every detection exactly once, in order, even
+# if several arrive before the stream thread wakes up.
+_state = {"seq": 0}
+_log = deque(maxlen=256)  # (seq, name); a stream more than 256 behind skips ahead
 _cond = threading.Condition()
 
 
@@ -20,9 +23,9 @@ def post_exercise():
         return jsonify({"error": "missing 'exercise'"}), 400
 
     with _cond:
-        _state["name"] = name
         _state["seq"] += 1
         seq = _state["seq"]
+        _log.append((seq, name))
         _cond.notify_all()
 
     return jsonify({"ok": True, "seq": seq})
@@ -31,18 +34,23 @@ def post_exercise():
 @app.route('/events')
 def events():
     """Server-Sent Events stream consumed by the React app via EventSource."""
+    with _cond:
+        # Start from "now": a client that (re)connects must not replay a rep
+        # someone did before it was listening.
+        start_seq = _state["seq"]
+
     def stream():
-        last_seq = 0
+        last_seq = start_seq
         # Open the stream with a comment so the client connects immediately.
         yield ": connected\n\n"
         while True:
             with _cond:
-                _cond.wait(timeout=15)
-                seq = _state["seq"]
-                name = _state["name"]
-            if seq != last_seq:
-                last_seq = seq
-                yield f"data: {json.dumps({'exercise': name, 'seq': seq})}\n\n"
+                _cond.wait_for(lambda: _state["seq"] != last_seq, timeout=15)
+                pending = [(s, n) for s, n in _log if s > last_seq]
+            if pending:
+                for seq, name in pending:
+                    yield f"data: {json.dumps({'exercise': name, 'seq': seq})}\n\n"
+                last_seq = pending[-1][0]
             else:
                 # Heartbeat (a comment) keeps the connection alive through
                 # proxies; EventSource ignores comment lines.
@@ -58,4 +66,5 @@ def events():
 if __name__ == '__main__':
     # threaded=True so a long-lived SSE connection doesn't block the POSTs
     # coming from the detector.
-    app.run(debug=True, threaded=True)
+    # debug stays off: the Werkzeug debugger allows code execution from the browser.
+    app.run(threaded=True)
