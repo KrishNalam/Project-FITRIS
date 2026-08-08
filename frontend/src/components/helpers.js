@@ -3,8 +3,8 @@
 export const GRID_WIDTH = 10;
 export const GRID_HEIGHT = 15;
 
-export const createEmptyGrid = (GRID_HEIGH, GRID_WIDT) => {
-  return Array.from(Array(GRID_HEIGH), () => Array(GRID_WIDT).fill(0));
+export const createEmptyGrid = (height = GRID_HEIGHT, width = GRID_WIDTH) => {
+  return Array.from(Array(height), () => Array(width).fill(0));
 };
 
 export const checkCollision = (tetromino, grid, { x: moveX, y: moveY }) => {
