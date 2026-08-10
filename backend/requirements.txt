@@ -1,5 +1,5 @@
-flask
-opencv-python
-mediapipe
-numpy
-requests
+flask>=2.3
+opencv-python>=4.8
+mediapipe>=0.10.9
+numpy>=1.24
+requests>=2.31

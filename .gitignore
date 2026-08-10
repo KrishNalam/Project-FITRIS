@@ -11,6 +11,9 @@ node_modules/
 __pycache__/
 *.pyc
 
+# downloaded pose model
+backend/models/
+
 # testing
 coverage/
 

@@ -25,17 +25,21 @@ the backend, and the backend streams them to the browser:
                                             └────────────┘
 ```
 
-1. **`exercise_detection.py`** captures your webcam with OpenCV and runs MediaPipe
-   Pose to get body landmarks. It computes joint angles each frame and uses simple
-   rules (e.g. knee angle for squats, arm/leg angles for jumping jacks) to detect a
-   completed rep. When it detects one, it **POSTs** the exercise name to
+1. **`exercise_detection.py`** captures your webcam with OpenCV and runs the
+   MediaPipe Pose Landmarker to get 33 body landmarks. It turns them into joint
+   angles each frame and hands them to `reps.py`, where each exercise has its own
+   state machine (e.g. knee angle for squats, arm/leg angles for jumping jacks), so
+   only a full rep counts. When it detects one, it **POSTs** the exercise name to
    `http://localhost:5000/exercise` (e.g. `{"exercise": "Squat"}`). Press **`q`** in
    the webcam window to quit.
 
 2. **`server.py`** is a Flask server holding the latest exercise in memory with an
    incrementing `seq`. `POST /exercise` records a detection; `GET /events` is a
    **Server-Sent Events** stream that pushes each detection to subscribers as
-   `{ "exercise": "Squat", "seq": 7 }`. It runs on `http://localhost:5000`.
+   `{ "exercise": "Squat", "seq": 7 }`. Detections are kept in a short log, so a
+   connected client gets every one exactly once and in order, even in bursts, and a
+   client that connects late does not replay old reps. It runs on
+   `http://localhost:5000`.
 
 3. **The React app** (`src/`) subscribes to `/events` with `EventSource` (the dev
    server proxies `/events` to Flask via the `"proxy"` field in `package.json`).
@@ -60,8 +64,10 @@ a webcam.
 
 ```
 backend/
-  exercise_detection.py # webcam pose detection -> POST /exercise
+  exercise_detection.py # webcam + MediaPipe -> joint angles -> POST /exercise
+  reps.py               # per-exercise rep state machines (no OpenCV needed)
   server.py             # Flask API: POST /exercise, SSE GET /events
+  test_backend.py       # rep + SSE tests (no webcam needed)
   requirements.txt      # Python dependencies
 frontend/
   package.json          # React app + dev-server proxy to Flask
@@ -70,6 +76,7 @@ frontend/
     App.js              # subscribes to /events and feeds the game
     components/
       Tetris.js         # game state, controls, scoring
+      Tetris.test.js    # game tests (colours, hold, exercise input)
       GameGrid.js       # renders the grid + active piece
       helpers.js        # grid + tetromino + collision helpers
 ```
@@ -129,8 +136,16 @@ Open **three** terminals from the project root.
    python backend/exercise_detection.py
    ```
 
+   On first run it downloads the MediaPipe pose model (~6 MB) to `backend/models/`.
    Stand back far enough that your whole body is visible. Press **`q`** in the
    webcam window to stop detection.
+
+## Tests
+
+```bash
+python backend/test_backend.py                        # rep detection + SSE delivery
+cd frontend && CI=true npm test -- --watchAll=false   # game logic
+```
 
 ## Usage
 
@@ -146,9 +161,10 @@ Open **three** terminals from the project root.
   latest exercise in memory only — restart it and that state is gone (the game just
   waits for the next detection), which is fine for a single local session.
 - The detector reads `FITRIS_SERVER` (default `http://localhost:5000`) if you need to
-  point it at a backend on another host/port.
-- High knees and a couple of other moves are present in the detection code but
-  currently commented out.
+  point it at a backend on another host/port, and `FITRIS_MODEL` to use a pose model
+  file somewhere else.
+- Angles are computed in normalized image coordinates, so on a widescreen webcam
+  they are slightly stretched horizontally; the thresholds were tuned that way.
 
 ## Credits
 
