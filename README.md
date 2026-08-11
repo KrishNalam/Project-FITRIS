@@ -163,8 +163,6 @@ cd frontend && CI=true npm test -- --watchAll=false   # game logic
 - The detector reads `FITRIS_SERVER` (default `http://localhost:5000`) if you need to
   point it at a backend on another host/port, and `FITRIS_MODEL` to use a pose model
   file somewhere else.
-- Angles are computed in normalized image coordinates, so on a widescreen webcam
-  they are slightly stretched horizontally; the thresholds were tuned that way.
 
 ## Credits
 

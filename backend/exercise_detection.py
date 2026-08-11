@@ -72,9 +72,11 @@ def draw_landmarks(image, landmarks):
         cv2.circle(image, pt, 4, (245, 117, 66), -1)
 
 
-def frame_angles(lm):
-    p = lambda i: [lm[i].x, lm[i].y]
-    chest = [(lm[L_SHOULDER].x + lm[R_SHOULDER].x) / 2, (lm[L_SHOULDER].y + lm[R_SHOULDER].y) / 2]
+def frame_angles(lm, w, h):
+    # Landmarks are normalized separately by width and height, so angles must be
+    # taken in pixel space or they stretch with the camera's aspect ratio.
+    p = lambda i: [lm[i].x * w, lm[i].y * h]
+    chest = [(p(L_SHOULDER)[0] + p(R_SHOULDER)[0]) / 2, (p(L_SHOULDER)[1] + p(R_SHOULDER)[1]) / 2]
     ang = calculate_angle
     return {
         'hsw1': ang(p(L_HIP), p(L_SHOULDER), p(L_WRIST)),  'hsw2': ang(p(R_HIP), p(R_SHOULDER), p(R_WRIST)),
@@ -115,7 +117,8 @@ def main():
                 lm = result.pose_landmarks[0]
                 draw_landmarks(image, lm)
                 valid = {name: in_frame(lm, idxs) for name, idxs in GROUPS.items()}
-                for exercise in counter.update(frame_angles(lm), valid):
+                h, w = image.shape[:2]
+                for exercise in counter.update(frame_angles(lm, w, h), valid):
                     send_exercise(exercise)
 
             cv2.imshow('FITRIS - Exercise Detection (press q to quit)', image)
