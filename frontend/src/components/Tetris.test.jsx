@@ -16,9 +16,9 @@ let n;
 beforeEach(() => {
   localStorage.clear();
   n = 0;
-  jest.spyOn(Math, 'random').mockImplementation(() => (n++ % 7) / 7 + 0.01);
+  vi.spyOn(Math, 'random').mockImplementation(() => (n++ % 7) / 7 + 0.01);
 });
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => vi.restoreAllMocks());
 
 test('locked pieces keep their colour', () => {
   const { container } = render(<Tetris event={null} />);
@@ -29,20 +29,20 @@ test('locked pieces keep their colour', () => {
 });
 
 test('hold works again after a piece locks by gravity', () => {
-  jest.useFakeTimers();
+  vi.useFakeTimers();
   const { container } = render(<Tetris event={null} />);
   fireEvent.keyDown(document, { key: 'c' });
   expect(holdGridColours(container)).toHaveLength(4);
   const firstHold = holdGridColours(container).join();
 
   // Let gravity lock the current piece (grid is 15 rows, 500 ms per row).
-  for (let i = 0; i < 20; i++) act(() => { jest.advanceTimersByTime(500); });
+  for (let i = 0; i < 20; i++) act(() => { vi.advanceTimersByTime(500); });
 
   fireEvent.keyDown(document, { key: 'c' });            // swap with the held piece
   expect(holdGridColours(container)).toHaveLength(4);
   // The held piece changed (cyan I -> blue J), so the second hold was accepted.
   expect(holdGridColours(container).join()).not.toBe(firstHold);
-  jest.useRealTimers();
+  vi.useRealTimers();
 });
 
 test('exercise events drive the game', () => {
