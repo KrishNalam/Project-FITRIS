@@ -1,50 +1,45 @@
 # FITRIS: Fitness Meets Tetris
 
-**FITRIS** turns your workout into a game of Tetris. A webcam watches your body, an
-AI pose model recognizes exercises (squats, jumping jacks, flexes, side sways), and
-each exercise is mapped to a Tetris control. Do a squat to hard-drop a piece, a
-jumping jack to rotate, sway left/right to move — and try to clear lines without
+**FITRIS** turns your workout into a game of Tetris. Your webcam watches your body,
+a pose model running in your browser recognizes exercises (squats, jumping jacks,
+flexes, side sways), and each one is mapped to a Tetris control. Squat to hard-drop
+a piece, do a jumping jack to rotate, sway to move, and try to clear lines without
 topping out.
+
+Everything runs on your device. There is no server: the video never leaves your
+browser, only the name of each completed exercise reaches the game.
 
 ## Tech Stack
 
-- **Frontend**: ReactJS (Create React App)
-- **Backend**: Flask (Python)
-- **Pose / Exercise Detection**: OpenCV + MediaPipe Pose
+- **Game**: React + Vite
+- **Pose detection**: MediaPipe Pose Landmarker for the web (WebAssembly, WebGL/GPU
+  with a CPU fallback)
+- **Hosting**: static files (GitHub Pages workflow included)
 
 ## How It Works
 
-FITRIS is three small programs connected by HTTP — the detector pushes events to
-the backend, and the backend streams them to the browser:
-
 ```
- ┌──────────────────────┐  POST /exercise  ┌────────────┐  SSE /events   ┌─────────────┐
- │ exercise_detection.py │ ───────────────▶ │  server.py │ ─────────────▶ │  React app  │
- │ (webcam + MediaPipe)  │   {exercise}     │  (Flask,   │   {exercise,   │  (Tetris)   │
- └──────────────────────┘                  │ in-memory) │     seq}        └─────────────┘
-                                            └────────────┘
+ webcam ──getUserMedia──▶ <video> ──every frame──▶ PoseLandmarker (33 landmarks)
+                                                          │
+                              joint angles (pixel space) ◀┘
+                                         │
+                     RepCounter: one state machine per exercise
+                                         │  "Squat", "Flex", ...
+                                         ▼
+                                 Tetris game action
 ```
 
-1. **`exercise_detection.py`** captures your webcam with OpenCV and runs the
-   MediaPipe Pose Landmarker to get 33 body landmarks. It turns them into joint
-   angles each frame and hands them to `reps.py`, where each exercise has its own
-   state machine (e.g. knee angle for squats, arm/leg angles for jumping jacks), so
-   only a full rep counts. When it detects one, it **POSTs** the exercise name to
-   `http://localhost:5000/exercise` (e.g. `{"exercise": "Squat"}`). Press **`q`** in
-   the webcam window to quit.
-
-2. **`server.py`** is a Flask server holding the latest exercise in memory with an
-   incrementing `seq`. `POST /exercise` records a detection; `GET /events` is a
-   **Server-Sent Events** stream that pushes each detection to subscribers as
-   `{ "exercise": "Squat", "seq": 7 }`. Detections are kept in a short log, so a
-   connected client gets every one exactly once and in order, even in bursts, and a
-   client that connects late does not replay old reps. It runs on
-   `http://localhost:5000`.
-
-3. **The React app** (`src/`) subscribes to `/events` with `EventSource` (the dev
-   server proxies `/events` to Flask via the `"proxy"` field in `package.json`).
-   Every event — identified by its unique `seq` — triggers the matching action, so
-   repeating the same exercise registers every time.
+1. **`components/Camera.jsx`** asks for the webcam, runs the pose landmarker on each
+   new video frame (`requestVideoFrameCallback`), draws the skeleton, and shows live
+   fps, inference time and camera-to-input latency (from each frame's capture
+   timestamp, where the browser provides it).
+2. **`pose/landmarks.js`** turns landmarks into joint angles. Angles are computed in
+   pixel space, since landmarks are normalized separately by width and height.
+3. **`pose/reps.js`** gives each exercise its own state machine, so only a full rep
+   counts (a half squat does nothing) and exercises can't reset each other.
+4. **`App.jsx`** turns each completed rep into a fresh `{ exercise, seq }` event, so
+   repeating the same exercise triggers every time, and **`components/Tetris.jsx`**
+   applies it.
 
 ### Exercise → control mapping
 
@@ -57,112 +52,64 @@ the backend, and the backend streams them to the browser:
 | Flex          | Hold piece         | `C`                 |
 | —             | Soft drop          | ↓ Down arrow        |
 
-Keyboard controls are always available, so you can play (and test) the game without
-a webcam.
+Keyboard controls always work, so you can play without a webcam.
 
 ## Project Structure
 
 ```
-backend/
-  exercise_detection.py # webcam + MediaPipe -> joint angles -> POST /exercise
-  reps.py               # per-exercise rep state machines (no OpenCV needed)
-  server.py             # Flask API: POST /exercise, SSE GET /events
-  test_backend.py       # rep + SSE tests (no webcam needed)
-  requirements.txt      # Python dependencies
 frontend/
-  package.json          # React app + dev-server proxy to Flask
-  public/
-  src/                  # React Tetris game
-    App.js              # subscribes to /events and feeds the game
+  index.html
+  vite.config.js
+  src/
+    App.jsx               # wires camera events into the game
+    pose/
+      detector.js         # loads MediaPipe (bundled WASM, GPU -> CPU fallback)
+      landmarks.js        # landmark indices, in-frame checks, joint angles
+      reps.js             # per-exercise rep state machines
+      reps.test.js
     components/
-      Tetris.js         # game state, controls, scoring
-      Tetris.test.js    # game tests (colours, hold, exercise input)
-      GameGrid.js       # renders the grid + active piece
-      helpers.js        # grid + tetromino + collision helpers
+      Camera.jsx          # webcam, detection loop, skeleton overlay, stats
+      Tetris.jsx          # game state, controls, scoring
+      GameGrid.jsx        # renders a grid + active piece
+      helpers.js          # grid, tetrominoes, collision
+      Tetris.test.jsx
+.github/workflows/deploy.yml  # test, build, publish to GitHub Pages
 ```
 
-## Installation
+## Running Locally
 
-Requirements: **Node.js** and **Python 3.10–3.12** (MediaPipe wheels may not yet be
-available on the very newest Python releases).
-
-1. Clone and enter the repo:
-
-   ```bash
-   git clone https://github.com/KrishNalam/Project-FITRIS.git
-   cd Project-FITRIS
-   ```
-
-2. Install the Python dependencies (a virtualenv is recommended):
-
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate      # Windows: .venv\Scripts\activate
-   pip install -r backend/requirements.txt
-   ```
-
-3. Install the frontend dependencies:
-
-   ```bash
-   cd frontend
-   npm install
-   cd ..
-   ```
-
-## Running the App
-
-Open **three** terminals from the project root.
-
-1. **Start the Flask backend** (serves `/exercise` on port 5000):
-
-   ```bash
-   source .venv/bin/activate      # if not already active
-   python backend/server.py
-   ```
-
-2. **Start the React frontend** (opens on port 3000, proxies to Flask):
-
-   ```bash
-   cd frontend
-   npm start
-   ```
-
-   Then open `http://localhost:3000`.
-
-3. **Start exercise detection** (opens a webcam window):
-
-   ```bash
-   source .venv/bin/activate      # if not already active
-   python backend/exercise_detection.py
-   ```
-
-   On first run it downloads the MediaPipe pose model (~6 MB) to `backend/models/`.
-   Stand back far enough that your whole body is visible. Press **`q`** in the
-   webcam window to stop detection.
-
-## Tests
+Requires **Node.js 20+**.
 
 ```bash
-python backend/test_backend.py                        # rep detection + SSE delivery
-cd frontend && CI=true npm test -- --watchAll=false   # game logic
+git clone https://github.com/KrishNalam/Project-FITRIS.git
+cd Project-FITRIS/frontend
+npm install
+npm run dev        # http://localhost:5173
 ```
 
-## Usage
+Click **Enable camera** and stand back far enough that your whole body is in frame.
+The pose model (~6 MB) downloads the first time. Camera access needs `localhost` or
+HTTPS.
 
-- Make sure your webcam is connected and not in use by another app.
-- Stand so your full body is in frame for the pose model to track you.
-- Perform exercises to control the falling pieces (see the mapping table above).
-- Prefer to test without a camera? Just skip step 3 and use the keyboard.
-- Clear lines for points; the high score is saved in your browser's local storage.
+```bash
+npm test           # rep detection + game logic
+npm run build      # static site in frontend/dist
+```
+
+## Deploying
+
+The site is plain static files. With the included workflow, enable **Settings →
+Pages → Source: GitHub Actions** and push to `main`; it tests, builds and publishes
+`frontend/dist`. Asset paths are relative, so it works under `/Project-FITRIS/` or on
+a custom domain.
 
 ## Notes & Limitations
 
-- Detections flow detector → backend (`POST`) → browser (SSE). The backend keeps the
-  latest exercise in memory only — restart it and that state is gone (the game just
-  waits for the next detection), which is fine for a single local session.
-- The detector reads `FITRIS_SERVER` (default `http://localhost:5000`) if you need to
-  point it at a backend on another host/port, and `FITRIS_MODEL` to use a pose model
-  file somewhere else.
+- One player at a time, in a single browser tab.
+- The pose model is fetched from Google's MediaPipe model storage; the WebAssembly
+  runtime ships with the site.
+- The original version (JamHacks 8) ran detection in Python/OpenCV and streamed
+  events to the browser through a Flask server; it is in the git history.
 
 ## Credits
 

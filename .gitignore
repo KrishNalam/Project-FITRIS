@@ -4,21 +4,14 @@
 node_modules/
 .pnp
 .pnp.js
-.venv/
 .env
 
-# python
-__pycache__/
-*.pyc
-
-# downloaded pose model
-backend/models/
 
 # testing
 coverage/
 
 # production
-build/
+dist/
 
 # misc
 .DS_Store
