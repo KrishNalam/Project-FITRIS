@@ -82,8 +82,8 @@ available on the very newest Python releases).
 1. Clone and enter the repo:
 
    ```bash
-   git clone https://github.com/yuvibirdi/fitris.git
-   cd fitris
+   git clone https://github.com/KrishNalam/Project-FITRIS.git
+   cd Project-FITRIS
    ```
 
 2. Install the Python dependencies (a virtualenv is recommended):
@@ -149,3 +149,10 @@ Open **three** terminals from the project root.
   point it at a backend on another host/port.
 - High knees and a couple of other moves are present in the detection code but
   currently commented out.
+
+## Credits
+
+FITRIS started at **JamHacks 8** (2024), where it won, built with
+[@yuvibirdi](https://github.com/yuvibirdi) and [@alhod](https://github.com/alhod).
+The original hackathon code lives at [yuvibirdi/fitris](https://github.com/yuvibirdi/fitris).
+It has since been rebuilt and is maintained by [@KrishNalam](https://github.com/KrishNalam).
