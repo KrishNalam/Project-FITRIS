@@ -3,8 +3,8 @@
 **FITRIS** turns your workout into a game of Tetris. Your webcam watches your body,
 a pose model running in your browser recognizes exercises (squats, jumping jacks,
 flexes, side sways), and each one is mapped to a Tetris control. Squat to hard-drop
-a piece, do a jumping jack to rotate, sway to move, and try to clear lines without
-topping out.
+a piece, do a jumping jack to rotate, hold an arm out to move, and try to clear
+lines without topping out.
 
 Everything runs on your device. There is no server: the video never leaves your
 browser, only the name of each completed exercise reaches the game.
@@ -43,16 +43,18 @@ browser, only the name of each completed exercise reaches the game.
 
 ### Exercise → control mapping
 
-| Exercise      | Tetris action      | Keyboard equivalent |
-| ------------- | ------------------ | ------------------- |
-| Sway Left     | Move piece left    | ← Left arrow        |
-| Sway Right    | Move piece right   | → Right arrow       |
-| Jumping Jack  | Rotate piece       | ↑ Up arrow          |
-| Squat         | Hard drop          | Spacebar            |
-| Flex          | Hold piece         | `C`                 |
-| —             | Soft drop          | ↓ Down arrow        |
+| Exercise                         | Tetris action    | Keyboard     |
+| -------------------------------- | ---------------- | ------------ |
+| Left arm straight out to the side  | Move piece left  | ← Left arrow  |
+| Right arm straight out to the side | Move piece right | → Right arrow |
+| Jumping jack                     | Rotate piece     | ↑ Up arrow    |
+| Squat                            | Hard drop        | Spacebar     |
+| Flex (both arms)                 | Hold piece       | `C`          |
+| —                                | Soft drop        | ↓ Down arrow  |
 
-Keyboard controls always work, so you can play without a webcam.
+Keyboard controls always work, and touch screens get on-screen buttons, so you can
+play without a webcam. The layout adapts from phones (portrait or landscape) to
+desktops, and the game shows a ghost of where the falling piece will land.
 
 ## Project Structure
 

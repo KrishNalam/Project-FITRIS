@@ -138,7 +138,7 @@ const Camera = ({ onExercise }) => {
   };
 
   return (
-    <div className="camera-panel">
+    <section className="panel camera-panel">
       <h2>CAMERA</h2>
       <div className={`camera-view ${status === 'on' ? '' : 'hidden'}`}>
         <video ref={videoRef} playsInline muted />
@@ -147,7 +147,7 @@ const Camera = ({ onExercise }) => {
 
       {status === 'idle' && (
         <>
-          <button className="play" onClick={start}>Enable camera</button>
+          <button className="btn" onClick={start}>ENABLE CAMERA</button>
           <p className="camera-note">Runs on your device. Video is never uploaded.</p>
         </>
       )}
@@ -155,7 +155,7 @@ const Camera = ({ onExercise }) => {
       {status === 'error' && (
         <>
           <p className="camera-note">{error}</p>
-          <button className="play" onClick={start}>Try again</button>
+          <button className="btn" onClick={start}>TRY AGAIN</button>
         </>
       )}
       {status === 'on' && (
@@ -170,8 +170,14 @@ const Camera = ({ onExercise }) => {
           )}
         </>
       )}
-      <p className="camera-note">Keys: left/right move · up rotate · down soft drop · space drop · C hold</p>
-    </div>
+      <ul className="moves">
+        <li><b>SQUAT</b> drop</li>
+        <li><b>JUMPING JACK</b> rotate</li>
+        <li><b>ARM OUT</b> move that way</li>
+        <li><b>FLEX</b> hold</li>
+      </ul>
+      <p className="camera-note keys-hint">Keys: arrows move/rotate · space drop · C hold</p>
+    </section>
   );
 };
 

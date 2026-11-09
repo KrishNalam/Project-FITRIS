@@ -31,13 +31,13 @@ export const checkCollision = (tetromino, grid, { x: moveX, y: moveY }) => {
 
 export const randomTetromino = () => {
   const tetrominoes = [
-    { shape: [[1, 1, 1, 1]], color: 'cyan' },            // I
-    { shape: [[1, 1, 1], [0, 1, 0]], color: 'purple' },  // T
-    { shape: [[1, 1, 1], [1, 0, 0]], color: 'blue' },    // J
-    { shape: [[1, 1, 1], [0, 0, 1]], color: 'orange' },  // L
-    { shape: [[1, 1], [1, 1]], color: 'yellow' },        // O
-    { shape: [[0, 1, 1], [1, 1, 0]], color: 'green' },   // S
-    { shape: [[1, 1, 0], [0, 1, 1]], color: 'red' },     // Z
+    { shape: [[1, 1, 1, 1]], color: '#00e5ff' },            // I
+    { shape: [[1, 1, 1], [0, 1, 0]], color: '#b026ff' },  // T
+    { shape: [[1, 1, 1], [1, 0, 0]], color: '#2f5bff' },    // J
+    { shape: [[1, 1, 1], [0, 0, 1]], color: '#ff9f1a' },  // L
+    { shape: [[1, 1], [1, 1]], color: '#ffe81a' },        // O
+    { shape: [[0, 1, 1], [1, 1, 0]], color: '#2bff5e' },   // S
+    { shape: [[1, 1, 0], [0, 1, 1]], color: '#ff2b4a' },     // Z
 
 ];
 

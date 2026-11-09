@@ -15,8 +15,9 @@ function App() {
 
   return (
     <div className="App">
-      <Tetris event={event} />
-      <Camera onExercise={onExercise} />
+      <Tetris event={event}>
+        <Camera onExercise={onExercise} />
+      </Tetris>
     </div>
   );
 }

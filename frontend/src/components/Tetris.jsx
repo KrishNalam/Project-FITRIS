@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { createEmptyGrid, checkCollision, GRID_WIDTH, GRID_HEIGHT, randomTetromino } from './helpers';
 import GameGrid from './GameGrid';
-import './Tetris.css'; // Import Tetris-specific CSS
+import './Tetris.css';
 
 const startPos = () => ({ x: Math.floor(GRID_WIDTH / 2) - 1, y: 0 });
+const LOGO = [['F', '#ff2b4a'], ['I', '#ff9f1a'], ['T', '#ffe81a'], ['R', '#2bff5e'], ['I', '#00e5ff'], ['S', '#b026ff']];
 
-const Tetris = ({event}) => {
+// A piece centred in a small 4x4 window (hold / next previews).
+const Preview = ({ shape, color }) => {
+  const pos = shape
+    ? { x: Math.floor((4 - shape[0].length) / 2), y: Math.floor((4 - shape.length) / 2) }
+    : { x: 0, y: 0 };
+  return <GameGrid className="mini" grid={createEmptyGrid(4, 4)} tetromino={shape} tetrominoPos={pos} colours={color} />;
+};
+
+const Tetris = ({ event, children }) => {
   // Lazy initial state: the game is ready on the first render, so there is no
   // window where the gravity timer or a key press sees an undefined piece.
   const [first] = useState(randomTetromino);
@@ -18,19 +27,34 @@ const Tetris = ({event}) => {
   const [hasHeld, setHasHeld] = useState(false);
   const [nextThreeTetrominos, setNextThreeTetrominos] = useState(() => [randomTetromino(), randomTetromino(), randomTetromino()]);
   const [score, setScore] = useState(0);
+  const [lines, setLines] = useState(0);
 
   const storedHighScore = localStorage.getItem('highscore');
   const highest = storedHighScore ? parseInt(storedHighScore, 10) : 0;
 
   useEffect(() => {
     const dropInterval = setInterval(() => {
-      if(!gameOver){
+      if (!gameOver) {
         dropTetromino();
       }
     }, 500);
     return () => clearInterval(dropInterval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [tetrominoPos, tetromino, grid, colours, gameOver]);
+  }, [tetrominoPos, tetromino, grid, colours, gameOver]);
+
+  const resetGame = () => {
+    const piece = randomTetromino();
+    setGrid(createEmptyGrid());
+    setTetromino(piece.shape);
+    setColours(piece.color);
+    setTetrominoPos(startPos());
+    setNextThreeTetrominos([randomTetromino(), randomTetromino(), randomTetromino()]);
+    setHold(null);
+    setHasHeld(false);
+    setScore(0);
+    setLines(0);
+    setGameOver(false);
+  };
 
   const moveTetromino = (dx, dy) => {
     if (!checkCollision(tetromino, grid, { x: tetrominoPos.x + dx, y: tetrominoPos.y + dy })) {
@@ -42,39 +66,32 @@ const Tetris = ({event}) => {
   };
 
   const rotateTetromino = () => {
-    const rotate = (matrix) => {
-      // Transpose the matrix
-      const transposed = matrix[0].map((_, i) => matrix.map(row => row[i]));
-      // Reverse the rows to get the rotated matrix
-      return transposed.map(row => row.reverse());
-    };
-
-    const rotatedTetromino = rotate(tetromino);
-
-    // Check for collision with rotated tetromino
+    // Transpose, then reverse each row: a clockwise rotation.
+    const transposed = tetromino[0].map((_, i) => tetromino.map((row) => row[i]));
+    const rotatedTetromino = transposed.map((row) => row.reverse());
     if (!checkCollision(rotatedTetromino, grid, tetrominoPos)) {
       setTetromino(rotatedTetromino);
     }
   };
 
+  const dropDistance = () => {
+    let d = 0;
+    while (!checkCollision(tetromino, grid, { x: tetrominoPos.x, y: tetrominoPos.y + d + 1 })) {
+      d++;
+    }
+    return d;
+  };
+
   const dropTetromino = () => {
     if (!checkCollision(tetromino, grid, { x: tetrominoPos.x, y: tetrominoPos.y + 1 })) {
-      setTetrominoPos((prevPos) => ({
-        ...prevPos,
-        y: prevPos.y + 1,
-      }));
+      setTetrominoPos((prevPos) => ({ ...prevPos, y: prevPos.y + 1 }));
     } else {
-      // Lock the Tetromino in place and spawn a new one
       placeTetromino(tetrominoPos);
     }
   };
 
   const harddropTetromino = () => {
-    let dropDistance = 0;
-    while (!checkCollision(tetromino, grid, { x: tetrominoPos.x, y: tetrominoPos.y + dropDistance + 1 })) {
-      dropDistance++;
-    }
-    placeTetromino({ x: tetrominoPos.x, y: tetrominoPos.y + dropDistance });
+    placeTetromino({ x: tetrominoPos.x, y: tetrominoPos.y + dropDistance() });
   };
 
   // Take the first queued piece and refill the queue (without mutating state).
@@ -84,9 +101,7 @@ const Tetris = ({event}) => {
     return next;
   };
 
-  // Put `piece` at the top of `board`. The game-over check uses the piece being
-  // spawned and the board after the last lock; it used to read the previous
-  // piece and the pre-lock grid from stale state.
+  // Put `piece` at the top of `board`; game over if it doesn't fit.
   const spawnTetromino = (piece, board, finalScore) => {
     setTetromino(piece.shape);
     setColours(piece.color);
@@ -101,25 +116,21 @@ const Tetris = ({event}) => {
     }
   };
 
-  const placeTetromino = (tetrominoPos) => {
+  const placeTetromino = (pos) => {
     const newGrid = grid.map((row) => [...row]);
     let linesCleared = 0;
 
     // Store the piece's colour so locked blocks keep it.
     tetromino.forEach((row, y) => {
       row.forEach((cell, x) => {
-        if (cell !== 0) {
-          if (tetrominoPos.y + y >= 0) {
-            newGrid[tetrominoPos.y + y][tetrominoPos.x + x] = colours;
-          }
+        if (cell !== 0 && pos.y + y >= 0) {
+          newGrid[pos.y + y][pos.x + x] = colours;
         }
       });
     });
 
-    // Check for line clears
     for (let y = GRID_HEIGHT - 1; y >= 0; y--) {
       if (newGrid[y].every((cell) => cell !== 0)) {
-        // Clear the line and shift the grid down
         newGrid.splice(y, 1);
         newGrid.unshift(Array(GRID_WIDTH).fill(0));
         y++;
@@ -129,15 +140,15 @@ const Tetris = ({event}) => {
 
     setGrid(newGrid);
 
-    const blockDropScore = tetromino.reduce((acc, row) => acc + row.filter(cell => cell !== 0).length, 0);
-    const newScore = score + (linesCleared * 100) + blockDropScore;
+    const blockDropScore = tetromino.reduce((acc, row) => acc + row.filter((cell) => cell !== 0).length, 0);
+    const newScore = score + linesCleared * 100 + blockDropScore;
     setScore(newScore);
+    setLines((l) => l + linesCleared);
 
-    // Any lock (gravity or hard drop) re-enables hold; before, only a hard drop did.
+    // Any lock (gravity or hard drop) re-enables hold.
     setHasHeld(false);
     spawnTetromino(takeNextTetromino(), newGrid, newScore);
   };
-
 
   // Swap the current piece with the held one (or the next piece if nothing is
   // held). Allowed once per piece.
@@ -146,144 +157,94 @@ const Tetris = ({event}) => {
       return;
     }
     setHasHeld(true);
-
-    const incoming = hold
-      ? { shape: hold.tetromino, color: hold.colours }
-      : takeNextTetromino();
+    const incoming = hold ? { shape: hold.tetromino, color: hold.colours } : takeNextTetromino();
     setHold({ tetromino, colours });
     spawnTetromino(incoming, grid, score);
   };
 
-  // Maps a detected exercise to a game action.
-  const applyExercise = (exercise) => {
-    if (gameOver) {
-      return;
-    }
-    switch (exercise) {
-      case 'Sway Left':
-        moveTetromino(-1, 0);
-        break;
-      case 'Sway Right':
-        moveTetromino(1, 0);
-        break;
-      case 'Squat':
-        harddropTetromino();
-        break;
-      case 'Jumping Jack':
-        rotateTetromino();
-        break;
-      case 'Flex':
-        holdTetromino();
-        break;
-      default:
-        break;
-    }
+  const actions = {
+    left: () => moveTetromino(-1, 0),
+    right: () => moveTetromino(1, 0),
+    down: () => moveTetromino(0, 1),
+    rotate: rotateTetromino,
+    drop: harddropTetromino,
+    hold: holdTetromino,
   };
+  const act = (name) => { if (!gameOver) actions[name](); };
 
-  // Respond to exercise detections streamed from the backend. Each detection
-  // carries a unique, incrementing `seq`, so even two identical exercises in a
-  // row arrive as distinct events and each triggers an action.
+  const EXERCISES = { 'Sway Left': 'left', 'Sway Right': 'right', Squat: 'drop', 'Jumping Jack': 'rotate', Flex: 'hold' };
+
+  // Each detection is a fresh { exercise, seq } object, so repeats still fire.
   useEffect(() => {
-    if (event && event.exercise) {
-      applyExercise(event.exercise);
+    if (event && EXERCISES[event.exercise]) {
+      act(EXERCISES[event.exercise]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event]);
 
-  // Keyboard controls (useful for playing/testing without a webcam).
   useEffect(() => {
+    const KEYS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowDown: 'down', ArrowUp: 'rotate', ' ': 'drop', c: 'hold', C: 'hold' };
     const handleKeyDown = (e) => {
-      if (gameOver) {
-        return;
-      }
-      if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' '].includes(e.key)) {
-        e.preventDefault(); // stop the page from scrolling while playing
-      }
-      switch (e.key) {
-        case 'ArrowLeft':
-          moveTetromino(-1, 0);
-          break;
-        case 'ArrowRight':
-          moveTetromino(1, 0);
-          break;
-        case 'ArrowDown':
-          moveTetromino(0, 1);
-          break;
-        case 'ArrowUp':
-          rotateTetromino();
-          break;
-        case ' ':
-          harddropTetromino();
-          break;
-        case 'c':
-        case 'C':
-          holdTetromino();
-          break;
-        default:
-          break;
-      }
+      const name = KEYS[e.key];
+      if (!name || gameOver) return;
+      e.preventDefault(); // no page scrolling, no re-clicking a focused button
+      act(name);
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   });
 
-
+  const ghostY = gameOver ? null : tetrominoPos.y + dropDistance();
 
   return (
-    <div className='whole'>
-      <div className='leftline'>
-      <div className='tetrisTwo'>
-        <div className='uppt2'>
-          <h2>HOLDS</h2>
-          <div className='hold'>
-            {hold ? (<GameGrid grid={createEmptyGrid(5, 10)} tetromino={hold.tetromino} tetrominoPos={{ x: 2, y: 1}} colours={hold.colours} />) : (<GameGrid grid={createEmptyGrid(5, 10)} />)}
-        </div>
-      </div>
-      </div>
-      <div className='tetrisTwo'>
-        <div className='uppt2'>
-          <h2>SCORE</h2>
-          <div className="score">{score}</div>
-          <h2>HIGH SCORE</h2>
-          <div className="score">{highest}</div>
-      </div>
-      </div>
-      </div>
-    <div className="tetris">
-      <div className='up'>
-        <h1>FITRIS</h1>
-        <GameGrid grid={grid} tetromino={tetromino} tetrominoPos={tetrominoPos} colours={colours} />
-        {gameOver && (
-          <div className="game-over-overlay">
-            <div className="game-over">
-              Game Over
+    <div className="layout">
+      <h1 className="logo" aria-label="FITRIS">
+        {LOGO.map(([ch, c], i) => <span key={i} style={{ color: c }}>{ch}</span>)}
+      </h1>
+
+      <aside className="side side-left">
+        <section className="panel hold">
+          <h2>HOLD</h2>
+          <Preview shape={hold?.tetromino} color={hold?.colours} />
+        </section>
+        <section className="panel stats">
+          <div><h2>SCORE</h2><p className="stat">{score}</p></div>
+          <div><h2>LINES</h2><p className="stat">{lines}</p></div>
+          <div><h2>HI</h2><p className="stat">{Math.max(highest, score)}</p></div>
+        </section>
+      </aside>
+
+      <main className="panel board-panel">
+        <div className="board">
+          <GameGrid grid={grid} tetromino={tetromino} tetrominoPos={tetrominoPos} colours={colours} ghostY={ghostY} />
+          {gameOver && (
+            <div className="game-over-overlay">
+              <p className="game-over">GAME<br />OVER</p>
+              <p className="final">SCORE {score}</p>
+              <button className="btn" onClick={resetGame} autoFocus>PLAY AGAIN</button>
             </div>
-            <button className="play" onClick={() => window.location.reload()}>Play Again</button>
-          </div>
-        )}
-      </div>
-    </div>
-    <div className='tetrisThree'>
-        <div className='uppt2'>
-          <h2>NEXT</h2>
-          <div className='next-tetrominos'>
-            {nextThreeTetrominos.map((nextTetromino, index) => (
-              nextTetromino && (
-              <div key={index}>
-                <GameGrid
-                  grid={createEmptyGrid(4, 10)}
-                  tetromino={nextTetromino.shape}
-                  tetrominoPos={{ x: 2, y: 1 }}
-                  colours={nextTetromino.color}
-                />
-              </div>
-              )
-            ))}     
-          </div>   
+          )}
         </div>
+      </main>
+
+      <aside className="side side-right">
+        <section className="panel next">
+          <h2>NEXT</h2>
+          <div className="next-list">
+            {nextThreeTetrominos.map((t, i) => <Preview key={i} shape={t.shape} color={t.color} />)}
+          </div>
+        </section>
+        {children}
+      </aside>
+
+      <div className="touch-controls" aria-label="Touch controls">
+        <button className="btn pad" aria-label="Hold" onPointerDown={() => act('hold')}>HOLD</button>
+        <button className="btn pad" aria-label="Rotate" onPointerDown={() => act('rotate')}>ROT</button>
+        <button className="btn pad" aria-label="Hard drop" onPointerDown={() => act('drop')}>DROP</button>
+        <button className="btn pad" aria-label="Move left" onPointerDown={() => act('left')}>&lt;</button>
+        <button className="btn pad" aria-label="Soft drop" onPointerDown={() => act('down')}>v</button>
+        <button className="btn pad" aria-label="Move right" onPointerDown={() => act('right')}>&gt;</button>
       </div>
-    
     </div>
   );
 };

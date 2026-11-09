@@ -1,15 +1,82 @@
-/* App.css */
-body{
-  font-family: "Press Start 2P", system-ui;
-  font-weight: 400;
-  font-style: normal;  
+/* Global retro theme. */
+:root {
+  --bg: #07071a;
+  --panel: #0d0d2b;
+  --well: #04040f;
+  --edge: #3d3dff;
+  --text: #e8e8ff;
+  --dim: #8c8cc4;
+  --accent: #ffe81a;
+  --font: "Press Start 2P", ui-monospace, monospace;
 }
 
-.App{
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: none;
+}
+
+body {
+  min-height: 100svh;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(61, 61, 255, 0.25), transparent 60%),
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px) 0 0 / 24px 24px,
+    var(--bg);
+}
+
+/* CRT scanlines over everything; purely decorative. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(rgba(0, 0, 0, 0.18) 0 1px, transparent 1px 3px);
+  z-index: 100;
+}
+
+.App {
+  min-height: 100svh;
   display: flex;
-  flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  background: radial-gradient(circle at center, #7163f5, #010158);
+  padding: 12px;
+}
+
+.btn {
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--bg);
+  background: var(--accent);
+  border: 0;
+  padding: 12px 14px;
+  cursor: pointer;
+  box-shadow: inset -3px -3px 0 rgba(0, 0, 0, 0.35), inset 3px 3px 0 rgba(255, 255, 255, 0.5), 0 0 0 3px var(--text);
+  touch-action: manipulation;
+}
+
+.btn:hover {
+  filter: brightness(1.1);
+}
+
+.btn:active {
+  box-shadow: inset 3px 3px 0 rgba(0, 0, 0, 0.35), 0 0 0 3px var(--text);
+}
+
+.btn:focus-visible {
+  outline: 3px solid #00e5ff;
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+  }
 }

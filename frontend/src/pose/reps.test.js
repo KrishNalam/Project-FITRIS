@@ -29,9 +29,11 @@ test('jumping jacks', () => {
   expect(run([{}, up, {}, up, {}])).toEqual(['Jumping Jack', 'Jumping Jack']);
 });
 
-test('sway needs a return to neutral', () => {
-  const right = { csw1: 160, hsw1: 100 };
-  expect(run([{}, right, right, {}, right])).toEqual(['Sway Right', 'Sway Right']);
+test('arm out moves that way, once per raise', () => {
+  const leftArm = { csw1: 160, hsw1: 100 };
+  const rightArm = { csw2: 160, hsw2: 100 };
+  expect(run([{}, leftArm, leftArm, {}, leftArm])).toEqual(['Sway Left', 'Sway Left']);
+  expect(run([{}, rightArm, {}])).toEqual(['Sway Right']);
 });
 
 test('flex fires once per pose', () => {

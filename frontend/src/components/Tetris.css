@@ -1,176 +1,252 @@
-/* Tetris.css */
+/* Tetris layout and pieces.
+   --cell is the board's block size; it shrinks to fit the screen. */
 
-.game-grid {
+.layout {
+  --cell: clamp(12px, min((100vw - 40px) / 10, (100svh - 370px) / 15), 32px);
   display: grid;
-  grid-template-columns: repeat(10, 30px);
-  background: #ccc;
-}
-
-.row {
-  display: flex;
-}
-
-.cell {
-  width: 30px;
-  height: 30px;
-  border: 1px solid rgb(255, 255, 255, 0.8);
-  background: #0d0464;
-}
-
-/* .occupied {
-  background-color: #ff0000;
-} */
-
-.tetris{
-  background-color: #000;
-  padding-top: 20px;
-  padding-bottom: 20px;
-  padding-left: 20px;
-  padding-right: 20px;
-  border-radius: 30px;
-  box-shadow: 0px 0px 2px 10px rgb(255, 255, 255, 0.8);
-  margin: 18px;
-
-}
-
-.tetrisTwo{
-  background-color: #000;
-  padding-top: 20px;
-  padding-left: 20px;
-  padding-bottom: 20px;
-  padding-right: 20px;
-  border-radius: 30px;
-  box-shadow: 0px 0px 2px 10px rgb(255, 255, 255, 0.8);
-  margin: 18px;
-  height: 100%;
-  max-width: 240px;
-}
-
-
-.tetrisThree{
-  background-color: #000;
-  padding-top: 20px;
-  padding-left: 20px;
-  padding-bottom: 20px;
-  padding-right: 20px;
-  border-radius: 30px;
-  box-shadow: 0px 0px 2px 10px rgb(255, 255, 255, 0.8);
-  margin: 18px;
-  height: 100%;
-  max-width: 240px;
-}
-
-h1{
-  color: #ccc;
-  display: flex;
-  justify-content: center;
-  font-size: 50px;
-  padding: 0;
-  margin-bottom: 10px;
-  margin-top: -20px;
-}
-
-h2{
-  color: #ccc;
-  display: flex;
-  justify-content: center;
-  font-size: 35px;
-  padding-top: 30px;
-  margin-bottom: 10px;
-  margin-top: -20px;
-  padding-left: 10px;
-  padding-right: 10px;
-}
-
-.up{
-  background-color: #313131;
-  padding: 30px;
-  border-radius: 25px;
-}
-
-.uppt2{
-  background-color: #313131;
-  padding: 0;
-  border-radius: 25px;
-  max-height: 100%;
-  overflow: hidden;
-}
-
-
-.game-over-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
+  gap: 14px;
+  justify-items: center;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    "logo  logo  logo"
+    "hold  stats next"
+    "board board board"
+    "touch touch touch"
+    "camera camera camera";
   width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  color: white;
-  font-size: 24px;
-  z-index: 10;
+  max-width: 460px;
 }
 
-.game-over{
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 100px;
-  color: #ccc;
-  text-shadow: 0 0 20px #FF0000, 0 0 30px #0000FF;
-  padding: 20px;
-  margin-bottom: 100px;
+.side {
+  display: contents;
 }
 
-.play{
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 50px;
-  color: #000;
-  padding: 20px;
-  border-radius: 25px;
-  background-color: #00ff00;
-  box-shadow: 0px 0px 2px 10px rgb(255, 255, 255, 0.8);
-  font-family: "Press Start 2P", system-ui;
+.logo { grid-area: logo; }
+.hold { grid-area: hold; }
+.stats { grid-area: stats; }
+.next { grid-area: next; }
+.board-panel { grid-area: board; }
+.touch-controls { grid-area: touch; }
+.camera-panel { grid-area: camera; }
 
+/* Wide screens and landscape phones: classic three columns. */
+@media (min-width: 900px), (orientation: landscape) and (min-width: 600px) {
+  .layout {
+    --cell: clamp(12px, min((100svh - 140px) / 15, (100vw - 600px) / 10), 34px);
+    grid-template-columns: auto auto auto;
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      "logo  logo  logo"
+      "left  board right"
+      "touch board right";
+    align-items: start;
+    max-width: none;
+    width: auto;
+    gap: 22px;
+  }
+  .side {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    align-items: stretch;
+  }
+  .side-left { grid-area: left; }
+  .side-right { grid-area: right; }
+  .stats {
+    flex-direction: column;
+  }
+  .next-list {
+    flex-direction: column;
+  }
 }
 
-.play:hover{
-  background-color: #00cc00;
+/* Short landscape screens (phones on their side): drop the logo row. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .layout {
+    --cell: clamp(10px, (100svh - 70px) / 15, 34px);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "left  board right"
+      "touch board right";
+  }
+  .logo {
+    display: none;
+  }
 }
 
+/* ---------- logo ---------- */
 
-.whole{
-  display: flex;
-  justify-content: space-evenly;
-  align-items: top;
+.logo {
+  margin: 4px 0 0;
+  font-size: clamp(26px, 7vw, 48px);
+  letter-spacing: 0.12em;
+  text-shadow: 3px 3px 0 var(--well), 0 0 18px rgba(61, 61, 255, 0.8);
 }
 
-.next-tetrominos {
+/* ---------- panels ---------- */
+
+.panel {
+  background: var(--panel);
+  border: 3px solid var(--text);
+  box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--edge), 0 0 26px rgba(61, 61, 255, 0.45);
+  padding: 12px;
+  text-align: center;
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+}
+
+.stats {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  justify-content: center;
+  min-width: 0;
 }
 
-.next-tetromino {
+.stats h2 {
+  margin-bottom: 6px;
+}
+
+.stat {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.next-list {
   display: flex;
+  gap: 8px;
   justify-content: center;
 }
 
-.leftline{
+/* ---------- grids and blocks ---------- */
+
+.board-panel {
+  padding: 8px;
+}
+
+.board {
+  position: relative;
+  background: var(--well);
+}
+
+.game-grid {
+  display: grid;
+}
+
+.game-grid.mini {
+  --cell: 9px;
+  margin: 0 auto;
+}
+
+@media (min-width: 900px), (orientation: landscape) and (min-width: 600px) {
+  .game-grid.mini {
+    --cell: 16px;
+  }
+}
+
+.cell {
+  width: var(--cell);
+  height: var(--cell);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+/* Bevelled block: light top-left edge, dark bottom-right edge. */
+.cell.occupied {
+  box-shadow:
+    inset calc(var(--cell) * 0.14) calc(var(--cell) * 0.14) 0 rgba(255, 255, 255, 0.5),
+    inset calc(var(--cell) * -0.14) calc(var(--cell) * -0.14) 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Ghost: an outline where the falling piece will land. */
+.cell.ghost {
+  box-shadow: inset 0 0 0 2px var(--c);
+  opacity: 0.45;
+}
+
+/* ---------- game over ---------- */
+
+.game-over-overlay {
+  position: absolute;
+  inset: 0;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  flex-direction: column;
+  gap: 16px;
+  background: rgba(4, 4, 15, 0.82);
+  z-index: 10;
 }
 
-.score{
-  display: flex;
-  justify-content: center;
-  color: #ccc;
-  font-size: 28px;
-  padding: 10px;
+.game-over {
+  margin: 0;
+  font-size: calc(var(--cell) * 1.3);
+  line-height: 1.3;
+  color: #ff2b4a;
+  text-shadow: 3px 3px 0 var(--well), 0 0 16px #ff2b4a;
+  animation: blink 1s steps(2, start) infinite;
+}
+
+.final {
+  margin: 0;
+  font-size: 11px;
+}
+
+@keyframes blink {
+  to { visibility: hidden; }
+}
+
+/* ---------- touch controls (touch screens only) ---------- */
+
+.touch-controls {
+  display: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .touch-controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 340px;
+  }
+  .keys-hint {
+    display: none;
+  }
+}
+
+.btn.pad {
+  padding: 16px 0;
+  font-size: 12px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Short landscape screens (phones on their side): compact everything so the
+   board, previews and touch controls all fit in the height. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .layout,
+  .side {
+    gap: 12px;
+  }
+  .panel {
+    padding: 8px;
+  }
+  .panel h2 {
+    margin-bottom: 6px;
+  }
+  .stats {
+    gap: 4px;
+  }
+  .game-grid.mini {
+    --cell: 8px;
+  }
+  .btn.pad {
+    padding: 10px 0;
+  }
 }

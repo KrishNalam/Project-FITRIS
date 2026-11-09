@@ -50,13 +50,15 @@ export class RepCounter {
 
     if (valid.sway) {
       if (a.hsw1 < 30 && a.hsw2 < 30) this.sway = 'neutral';
+      // One arm straight out to the side (other arm down) moves the piece that
+      // way from the player's point of view: landmark 1 is the player's left.
       if (a.csw1 > 150 && a.hsw2 < 30) {
-        if (this.sway === 'neutral') done.push('Sway Right');
-        this.sway = 'right';
-      }
-      if (a.csw2 > 150 && a.hsw1 < 30) {
         if (this.sway === 'neutral') done.push('Sway Left');
         this.sway = 'left';
+      }
+      if (a.csw2 > 150 && a.hsw1 < 30) {
+        if (this.sway === 'neutral') done.push('Sway Right');
+        this.sway = 'right';
       }
     }
 

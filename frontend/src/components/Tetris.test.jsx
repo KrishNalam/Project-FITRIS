@@ -2,7 +2,7 @@ import { render, fireEvent, act } from '@testing-library/react';
 import Tetris from './Tetris';
 
 const mainGridColours = (container) =>
-  [...container.querySelectorAll('.tetris .cell')]
+  [...container.querySelectorAll('.board .cell')]
     .map((c) => c.style.backgroundColor)
     .filter((c) => c && c !== 'transparent');
 
@@ -48,5 +48,28 @@ test('hold works again after a piece locks by gravity', () => {
 test('exercise events drive the game', () => {
   const { container, rerender } = render(<Tetris event={null} />);
   rerender(<Tetris event={{ exercise: 'Squat', seq: 1 }} />);
+  expect(mainGridColours(container)).toHaveLength(8);
+});
+
+test('ghost outlines the landing spot without colouring the board', () => {
+  const { container } = render(<Tetris event={null} />);
+  expect(container.querySelectorAll('.board .cell.ghost')).toHaveLength(4);
+  expect(mainGridColours(container)).toHaveLength(4);
+});
+
+test('play again restarts without reloading the page', () => {
+  const { container, getByText, queryByText } = render(<Tetris event={null} />);
+  for (let i = 0; i < 40 && !queryByText('PLAY AGAIN'); i++) {
+    fireEvent.keyDown(document, { key: ' ' });
+  }
+  expect(getByText('PLAY AGAIN')).toBeTruthy();
+  fireEvent.click(getByText('PLAY AGAIN'));
+  expect(queryByText('PLAY AGAIN')).toBeNull();
+  expect(mainGridColours(container)).toHaveLength(4); // empty board + new piece
+});
+
+test('touch buttons control the game', () => {
+  const { container, getByLabelText } = render(<Tetris event={null} />);
+  fireEvent.pointerDown(getByLabelText('Hard drop'));
   expect(mainGridColours(container)).toHaveLength(8);
 });
