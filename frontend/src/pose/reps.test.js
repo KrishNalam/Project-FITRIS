@@ -6,9 +6,10 @@ const ALL = { jj: true, squat: true, sway: true, flex: true };
 const STAND = { hsw1: 10, hsw2: 10, sha1: 178, sha2: 178, hka1: 175, hka2: 175,
   sew1: 170, sew2: 170, csw1: 90, csw2: 90, esh1: 10, esh2: 10 };
 
-const run = (frames) => {
+// Each listed pose is held for 3 frames, like a real movement.
+const run = (frames, valid = ALL) => {
   const c = new RepCounter();
-  return frames.flatMap((f) => c.update({ ...STAND, ...f }, ALL));
+  return frames.flatMap((f) => Array.from({ length: 3 }, () => c.update({ ...STAND, ...f }, valid)).flat());
 };
 
 test('angle', () => {
@@ -66,4 +67,19 @@ test('guessed (low-visibility) legs disable leg moves but not arm moves', () => 
   expect(v.jj).toBe(false);
   expect(v.sway).toBe(true);
   expect(v.flex).toBe(true);
+});
+
+test('with a hold, a one-frame glitch is not a rep', () => {
+  const c = new RepCounter(3);
+  const frames = [STAND, STAND, STAND, { ...STAND, hka1: 80, hka2: 20 }, STAND, STAND, STAND];
+  expect(frames.flatMap((f) => c.update(f, ALL))).toEqual([]);
+});
+
+test('losing sight of the legs clears a half-done squat', () => {
+  const c = new RepCounter();
+  const feed = (f, valid, n = 3) => Array.from({ length: n }, () => c.update({ ...STAND, ...f }, valid)).flat();
+  feed({}, ALL);
+  feed({ hka1: 90, hka2: 90 }, ALL); // squat bottom
+  feed({}, { ...ALL, squat: false }, 20); // legs drop out of view
+  expect(feed({}, ALL)).toEqual([]); // standing up afterwards is not a squat
 });
