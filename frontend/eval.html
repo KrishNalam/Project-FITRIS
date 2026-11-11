@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FITRIS Eval</title>
+    <style>
+      body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #fff; color: #111; }
+      table { border-collapse: collapse; margin-top: 12px; }
+      td, th { border: 1px solid #ccc; padding: 4px 8px; text-align: left; vertical-align: top; }
+      .muted { color: #666; }
+    </style>
+  </head>
+  <body>
+    <h1>FITRIS accuracy eval</h1>
+    <p class="muted">
+      Dev-only (not deployed). Pick clips named <code>&lt;move&gt;_&lt;anything&gt;_&lt;count&gt;</code>,
+      move = squat | jj | left | right | flex. Each clip runs frame by frame through the game's
+      own detector and rep counter.
+    </p>
+    <input id="files" type="file" accept="video/*" multiple />
+    <button id="dl" disabled>Download per-frame angles (JSON)</button>
+    <p id="status"></p>
+    <p id="summary"></p>
+    <table id="out" hidden>
+      <thead><tr><th>clip</th><th>move</th><th>expected</th><th>counted</th><th>missed</th><th>extra</th><th>other moves</th><th>no pose</th><th>detections (s)</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <script type="module" src="/src/eval/main.js"></script>
+  </body>
+</html>
