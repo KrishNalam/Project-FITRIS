@@ -67,3 +67,14 @@
   content: ":";
   color: var(--dim);
 }
+
+.camera-log {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.camera-log .camera-stats {
+  flex-basis: 100%;
+}

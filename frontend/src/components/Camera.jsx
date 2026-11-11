@@ -4,7 +4,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { loadLandmarker } from '../pose/detector';
 import { RepCounter } from '../pose/reps';
 import { CONNECTIONS, frameAngles, validGroups } from '../pose/landmarks';
+import { gpuName, newLog, summarizeLog } from './sessionLog';
 import './Camera.css';
+
+// Open the site with ?log to record stats and moves for a report.
+const LOGGING = new URLSearchParams(window.location.search).has('log');
+const f0 = (v) => (v == null ? '–' : v.toFixed(0));
 
 const drawPose = (ctx, lm, w, h) => {
   ctx.clearRect(0, 0, w, h);
@@ -90,6 +95,15 @@ const runDetection = ({ video, canvas, landmarker, onExercise, onStats }) => {
   };
 };
 
+const downloadLog = (log, report, delegate) => {
+  const device = { userAgent: navigator.userAgent, cores: navigator.hardwareConcurrency, gpu: gpuName(), delegate };
+  const blob = new Blob([JSON.stringify({ device, report, ...log }, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `fitris-log-${new Date().toISOString().slice(0, 19).replace(/:/g, '')}.json`;
+  a.click();
+};
+
 const Camera = ({ onExercise }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -100,6 +114,8 @@ const Camera = ({ onExercise }) => {
   const [stats, setStats] = useState(null);
   const [delegate, setDelegate] = useState('');
   const [last, setLast] = useState('');
+  const logRef = useRef(newLog());
+  const [report, setReport] = useState(null);
 
   useEffect(() => { onExerciseRef.current = onExercise; }, [onExercise]);
   useEffect(() => () => cleanupRef.current?.(), []);
@@ -120,9 +136,15 @@ const Camera = ({ onExercise }) => {
         video,
         canvas: canvasRef.current,
         landmarker: loaded.landmarker,
-        onExercise: (ex) => { setLast(ex); onExerciseRef.current(ex); },
-        onStats: setStats,
+        onExercise: (ex) => {
+          setLast(ex);
+          onExerciseRef.current(ex);
+          const log = logRef.current;
+          if (LOGGING) log.events.push({ t: (performance.now() - log.t0) / 1000, ex });
+        },
+        onStats: (s) => { setStats(s); if (LOGGING) logRef.current.stats.push(s); },
       });
+      logRef.current = newLog();
       cleanupRef.current = () => {
         stop();
         loaded.landmarker.close();
@@ -167,6 +189,24 @@ const Camera = ({ onExercise }) => {
               {stats.latencyMs != null && ` · ${stats.latencyMs.toFixed(0)} ms latency`}
               {` · ${delegate}`}
             </p>
+          )}
+          {LOGGING && (
+            <div className="camera-log">
+              <button className="btn" onClick={() => setReport(summarizeLog(logRef.current))}>REPORT</button>
+              <button className="btn" onClick={() => { logRef.current = newLog(); setReport(null); }}>RESET</button>
+              {report && (
+                <>
+                  <p className="camera-stats" data-testid="camera-report">
+                    {report.seconds.toFixed(0)} s logged<br />
+                    fps {f0(report.fps.median)} (worst {f0(report.fps.worst)})<br />
+                    infer {f0(report.inferMs.median)} ms (worst {f0(report.inferMs.worst)})<br />
+                    latency {f0(report.latencyMs.median)} ms (worst {f0(report.latencyMs.worst)})<br />
+                    {Object.entries(report.moves).map(([ex, n]) => `${ex} ×${n}`).join(' · ') || 'no moves'}
+                  </p>
+                  <button className="btn" onClick={() => downloadLog(logRef.current, report, delegate)}>DOWNLOAD</button>
+                </>
+              )}
+            </div>
           )}
         </>
       )}
