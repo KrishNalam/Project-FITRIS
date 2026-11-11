@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadLandmarker } from '../pose/detector';
 import { RepCounter } from '../pose/reps';
-import { CONNECTIONS, frameAngles, validGroups } from '../pose/landmarks';
+import { CONNECTIONS, frameAngles, seen, validGroups } from '../pose/landmarks';
 import { gpuName, newLog, summarizeLog } from './sessionLog';
 import './Camera.css';
 
@@ -17,13 +17,16 @@ const drawPose = (ctx, lm, w, h) => {
   ctx.lineWidth = 3;
   ctx.strokeStyle = '#f542e6';
   ctx.fillStyle = '#f57542';
+  // Only what the model actually sees, so a cropped body part visibly drops out.
   for (const [i, j] of CONNECTIONS) {
+    if (!seen(lm[i]) || !seen(lm[j])) continue;
     ctx.beginPath();
     ctx.moveTo(lm[i].x * w, lm[i].y * h);
     ctx.lineTo(lm[j].x * w, lm[j].y * h);
     ctx.stroke();
   }
   for (const p of lm) {
+    if (!seen(p)) continue;
     ctx.beginPath();
     ctx.arc(p.x * w, p.y * h, 4, 0, 2 * Math.PI);
     ctx.fill();
@@ -37,7 +40,7 @@ const errorMessage = (err) => {
 };
 
 // Runs detection on every new video frame until the returned stop() is called.
-const runDetection = ({ video, canvas, landmarker, onExercise, onStats }) => {
+const runDetection = ({ video, canvas, landmarker, onExercise, onStats, onPose }) => {
   const counter = new RepCounter();
   const ctx = canvas.getContext('2d');
   const useRVFC = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
@@ -67,7 +70,12 @@ const runDetection = ({ video, canvas, landmarker, onExercise, onStats }) => {
 
     const result = landmarker.detectForVideo(video, ts);
     const lm = result.landmarks[0];
-    if (lm) counter.update(frameAngles(lm, w, h), validGroups(lm)).forEach(onExercise);
+    if (lm) {
+      const angles = frameAngles(lm, w, h);
+      const valid = validGroups(lm);
+      counter.update(angles, valid).forEach(onExercise);
+      onPose?.(angles, valid);
+    }
     const done = performance.now();
     drawPose(ctx, lm, w, h);
 
@@ -143,6 +151,12 @@ const Camera = ({ onExercise }) => {
           if (LOGGING) log.events.push({ t: (performance.now() - log.t0) / 1000, ex });
         },
         onStats: (s) => { setStats(s); if (LOGGING) logRef.current.stats.push(s); },
+        // Per-frame angles let a bad session be replayed offline through RepCounter.
+        onPose: LOGGING && ((angles, valid) => {
+          const log = logRef.current;
+          const a = Object.fromEntries(Object.entries(angles).map(([k, v]) => [k, Math.round(v)]));
+          log.frames.push({ t: +((performance.now() - log.t0) / 1000).toFixed(3), a, valid });
+        }),
       });
       logRef.current = newLog();
       cleanupRef.current = () => {

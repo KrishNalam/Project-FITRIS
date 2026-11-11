@@ -16,20 +16,23 @@ export const CONNECTIONS = [
   [L_HIP, L_KNEE], [L_KNEE, L_ANKLE], [R_HIP, R_KNEE], [R_KNEE, R_ANKLE],
 ];
 
-// Landmarks each exercise needs in frame (normalized coords within -0.5..1.5).
+// Landmarks each exercise's angles use (see frameAngles); all must be seen.
 const GROUPS = {
-  jj: [L_HIP, R_HIP, L_SHOULDER, R_SHOULDER, L_WRIST, R_WRIST, L_ANKLE, R_ANKLE],
-  squat: [L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE],
-  sway: [L_SHOULDER, R_SHOULDER, L_WRIST, R_WRIST, L_ANKLE, R_ANKLE],
-  flex: [L_ELBOW, R_ELBOW, L_SHOULDER, R_SHOULDER, L_WRIST, R_WRIST],
+  jj: [L_HIP, R_HIP, L_SHOULDER, R_SHOULDER, L_WRIST, R_WRIST, L_ANKLE, R_ANKLE], // hsw, sha
+  squat: [L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE], // hka
+  sway: [L_HIP, R_HIP, L_SHOULDER, R_SHOULDER, L_WRIST, R_WRIST], // csw, hsw
+  flex: [L_HIP, R_HIP, L_ELBOW, R_ELBOW, L_SHOULDER, R_SHOULDER, L_WRIST, R_WRIST], // esh, sew
 };
 
-const inRange = (v) => v >= -0.5 && v <= 1.5;
+// MediaPipe still returns guessed positions for body parts out of frame (e.g.
+// legs cropped by a desk webcam); their angles jitter and fire fake reps. Only
+// trust points inside the frame that the model says it can see.
+const MIN_VISIBILITY = 0.5; // tune if moves drop out in poor light
+const inRange = (v) => v >= -0.05 && v <= 1.05;
+export const seen = (p) => inRange(p.x) && inRange(p.y) && (p.visibility ?? 1) >= MIN_VISIBILITY;
 
 export const validGroups = (lm) =>
-  Object.fromEntries(
-    Object.entries(GROUPS).map(([name, idxs]) => [name, idxs.every((i) => inRange(lm[i].x) && inRange(lm[i].y))])
-  );
+  Object.fromEntries(Object.entries(GROUPS).map(([name, idxs]) => [name, idxs.every((i) => seen(lm[i]))]));
 
 // Landmarks are normalized separately by width and height, so angles are taken
 // in pixel space; otherwise they stretch with the camera's aspect ratio.

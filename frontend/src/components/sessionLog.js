@@ -1,6 +1,6 @@
 // Session log for ?log mode: per-second camera stats and detected moves, so you
 // can measure while standing away from the screen and read the report after.
-export const newLog = () => ({ t0: performance.now(), stats: [], events: [] });
+export const newLog = () => ({ t0: performance.now(), stats: [], events: [], frames: [] });
 
 const pct = (xs, p) => {
   if (!xs.length) return null;

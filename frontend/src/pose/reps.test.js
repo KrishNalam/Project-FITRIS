@@ -57,3 +57,13 @@ test('groups are invalid when a landmark is far out of frame', () => {
   expect(v.squat).toBe(false);
   expect(v.flex).toBe(true);
 });
+
+test('guessed (low-visibility) legs disable leg moves but not arm moves', () => {
+  const lm = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 0.99 }));
+  for (const i of [25, 26, 27, 28]) lm[i] = { x: 0.5, y: 0.9, visibility: 0.1 }; // knees + ankles cropped
+  const v = validGroups(lm);
+  expect(v.squat).toBe(false);
+  expect(v.jj).toBe(false);
+  expect(v.sway).toBe(true);
+  expect(v.flex).toBe(true);
+});
